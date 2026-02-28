@@ -89,7 +89,8 @@ if uploaded_file is not None:
 
         # If empty → use OCR
         if resume_text.strip() == "":
-            resume_text = extract_text_ocr("temp.pdf", poppler_path=POPPLER_PATH)
+            st.error("⚠ This resume appears to be a scanned PDF. Please upload a text-based PDF resume.")
+            st.stop()
 
         cleaned_resume = clean_text(resume_text)
 
