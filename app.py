@@ -1,22 +1,41 @@
 import streamlit as st
 import numpy as np
 import json
+import os
+import pytesseract
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from utils import extract_text_from_pdf, clean_text
+from utils import (
+    extract_text_from_pdf,
+    extract_text_ocr,
+    clean_text
+)
 
-# -----------------------------
-# Load Model (Cached)
-# -----------------------------
+# =====================================================
+# 🔧 WINDOWS CONFIG (Modify if needed)
+# =====================================================
+
+# Set this ONLY if running locally on Windows
+POPPLER_PATH = None   # change if needed
+TESSERACT_PATH = None  # change if needed
+
+if os.name == "nt":
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+
+# =====================================================
+# 🚀 Load Model (Cached)
+# =====================================================
+
 @st.cache_resource
 def load_model():
     return SentenceTransformer("all-MiniLM-L6-v2")
 
 model = load_model()
 
-# -----------------------------
-# Load Job Data (Cached)
-# -----------------------------
+# =====================================================
+# 📂 Load Job Data (Cached)
+# =====================================================
+
 @st.cache_data
 def load_jobs():
     with open("data/description/job_dataset.json", "r", encoding="utf-8") as f:
@@ -40,184 +59,84 @@ def load_jobs():
 
     return job_texts, job_ids, job_titles, job_skills
 
+
 job_texts, job_ids, job_titles, job_skills = load_jobs()
 job_embeddings = np.load("job_embeddings.npy")
 
-# -----------------------------
-# Helper Functions
-# -----------------------------
+# =====================================================
+# 🎨 UI
+# =====================================================
 
-def classify_match(score):
-    if score >= 0.80:
-        return "Strong Match", "success"
-    elif score >= 0.60:
-        return "Moderate Match", "warning"
-    else:
-        return "Low Match", "error"
+st.title("🚀 AI Resume Screening & Job Matching System")
+st.write("Upload your resume and discover best matching job roles with skill insights.")
 
-def generate_summary(title, score, matched, missing):
-    return (
-        f"Your profile shows {round(score*100)}% alignment with the {title} role. "
-        f"Strong areas include {', '.join(matched[:3]) if matched else 'core fundamentals'}. "
-        f"Improving {', '.join(missing[:3]) if missing else 'advanced skills'} would significantly increase alignment."
-    )
+uploaded_file = st.file_uploader("Upload your resume (PDF)", type=["pdf"])
 
-def generate_suggestions(score, missing):
-    suggestions = []
-
-    if any("CI/CD" in s for s in missing):
-        suggestions.append("Include CI/CD or deployment pipeline experience.")
-    if any("Spark" in s or "Hadoop" in s for s in missing):
-        suggestions.append("Add distributed data processing projects (Spark/Hadoop).")
-    if any("Reinforcement Learning" in s for s in missing):
-        suggestions.append("Include reinforcement learning or advanced experimentation projects.")
-    if score < 0.70:
-        suggestions.append("Strengthen core technical stack before applying to senior-level roles.")
-    if len(missing) > 10:
-        suggestions.append("Improve resume skill coverage and highlight relevant tools clearly.")
-
-    return suggestions
-
-# -----------------------------
-# UI
-# -----------------------------
-st.title("🚀 AI Resume Intelligence Platform")
-st.write("Upload your resume to receive a structured AI Career Report.")
-
-uploaded_file = st.file_uploader("Upload Resume (PDF)", type=["pdf"])
+# =====================================================
+# 🔍 Resume Processing
+# =====================================================
 
 if uploaded_file is not None:
 
-    with open("temp.pdf", "wb") as f:
-        f.write(uploaded_file.read())
+    with st.spinner("Processing resume..."):
 
-    resume_text = extract_text_from_pdf("temp.pdf")
+        # Save temp file
+        with open("temp.pdf", "wb") as f:
+            f.write(uploaded_file.read())
 
-    if resume_text.strip() == "":
-        st.error("⚠ Please upload a text-based PDF resume.")
-        st.stop()
+        # Try text extraction first
+        resume_text = extract_text_from_pdf("temp.pdf")
 
-    cleaned_resume = clean_text(resume_text)
-    resume_embedding = model.encode([cleaned_resume])
-    similarity = cosine_similarity(resume_embedding, job_embeddings)[0]
+        # If empty → use OCR
+        if resume_text.strip() == "":
+            st.error("⚠ This resume appears to be a scanned PDF. Please upload a text-based PDF resume.")
+            st.stop()
 
-    # -----------------------------
-    # Filter Applicable Roles
-    # -----------------------------
-    threshold = 0.60
+        cleaned_resume = clean_text(resume_text)
 
-    applicable_indices = [
-        i for i, score in enumerate(similarity)
-        if score >= threshold
-    ]
+        # Generate embedding
+        resume_embedding = model.encode([cleaned_resume])
 
-    applicable_indices = sorted(
-        applicable_indices,
-        key=lambda i: similarity[i],
-        reverse=True
-    )
+        # Compute similarity
+        similarity = cosine_similarity(resume_embedding, job_embeddings)[0]
 
-    # Deduplicate by title
-    unique_roles = {}
-    for idx in applicable_indices:
-        title = job_titles[idx]
-        if title not in unique_roles:
-            unique_roles[title] = idx
+        threshold = 0.60  # adjust if needed
 
-    applicable_indices = list(unique_roles.values())
+        applicable_indices = [
+            i for i, score in enumerate(similarity)
+            if score >= threshold
+        ]
 
-    if not applicable_indices:
-        st.warning("No strong role alignment detected. Consider enhancing your resume.")
-        st.stop()
+# Sort descending
+        applicable_indices = sorted(
+            applicable_indices,
+            key=lambda i: similarity[i],
+            reverse=True
+        )
 
-    # -----------------------------
-    # Global Career Report Overview
-    # -----------------------------
-    st.markdown("## 🧠 AI Career Report")
+    st.subheader("🎯 Top Matching Jobs")
 
-    best_idx = applicable_indices[0]
-    best_score = similarity[best_idx]
-
-    st.markdown("### 🏆 Best Career Fit")
-    st.success(f"{job_titles[best_idx]} ({round(best_score*100,2)}%)")
-    st.progress(best_score)
-
-    st.write(f"Total Relevant Roles Found: {len(applicable_indices)}")
-
-    # -----------------------------
-    # Accordion Role Analysis
-    # -----------------------------
     for idx in applicable_indices:
 
-        score = similarity[idx]
-        title = job_titles[idx]
+        st.markdown(f"### {job_titles[idx]}")
+        score_percent = round(float(similarity[idx]) * 100, 2)
 
-        with st.expander(f"{title} — {round(score*100,2)}% Match"):
+        st.progress(score_percent / 100)
+        st.write(f"**Match Score:** {score_percent}%")
 
-            label, label_type = classify_match(score)
+        # Skill Gap Analysis
+        matched = []
+        missing = []
 
-            if label_type == "success":
-                st.success(label)
-            elif label_type == "warning":
-                st.warning(label)
+        for skill in job_skills[idx]:
+            if skill.lower() in cleaned_resume:
+                matched.append(skill)
             else:
-                st.error(label)
+                missing.append(skill)
 
-            st.progress(score)
+        st.write("✅ **Matched Skills:**", matched if matched else "None detected")
+        st.write("❌ **Missing Skills:**", missing if missing else "None")
+        st.markdown("---")
 
-            # Skill Matching
-            matched = []
-            missing = []
-
-            for skill in job_skills[idx]:
-                if skill.lower() in cleaned_resume:
-                    matched.append(skill)
-                else:
-                    missing.append(skill)
-
-            # Categorize Gaps
-            critical_keywords = [
-                "CI/CD", "Spark", "Hadoop",
-                "Kubernetes", "MLOps",
-                "Reinforcement Learning",
-                "LLMs", "Computer Vision"
-            ]
-
-            critical_gaps = []
-            advanced_gaps = []
-
-            for skill in missing:
-                if any(k.lower() in skill.lower() for k in critical_keywords):
-                    critical_gaps.append(skill)
-                else:
-                    advanced_gaps.append(skill)
-
-            # Career Summary
-            st.markdown("### 🧠 Career Alignment Summary")
-            st.info(generate_summary(title, score, matched, missing))
-
-            # Strength Areas
-            if matched:
-                st.markdown("### 💪 Strength Areas")
-                for skill in matched[:8]:
-                    st.write(f"• {skill}")
-
-            # Critical Gaps
-            if critical_gaps:
-                st.markdown("### 🔴 Critical Skill Gaps")
-                for skill in critical_gaps:
-                    st.write(f"• {skill}")
-
-            # Advanced Gaps
-            if advanced_gaps:
-                st.markdown("### 🟡 Advanced Skill Gaps")
-                for skill in advanced_gaps[:8]:
-                    st.write(f"• {skill}")
-
-            # Suggestions
-            suggestions = generate_suggestions(score, missing)
-
-            if suggestions:
-                st.markdown("### 🚀 Action Plan to Improve Match")
-                for s in suggestions:
-                    st.write(f"• {s}")
+    # Clean temp file
+    os.remove("temp.pdf")
