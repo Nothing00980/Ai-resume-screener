@@ -169,7 +169,7 @@ if uploaded_file is not None:
 
     st.markdown("### 🏆 Best Career Fit")
     st.success(f"{job_titles[best_idx]} ({round(best_score*100,2)}%)")
-    st.progress(best_score)
+    st.progress(int(best_score*100))
 
     st.write(f"Total Relevant Roles Found: {len(applicable_indices)}")
 
@@ -193,7 +193,7 @@ if uploaded_file is not None:
             else:
                 st.error(label)
 
-            st.progress(score)
+            st.progress(int(score*100))
 
             matched = []
             missing = []
