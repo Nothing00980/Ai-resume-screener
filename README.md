@@ -119,18 +119,18 @@ Structured JSON format containing:
 
 ## ⚙️ Tech Stack
 
-| Component                | Technology                           |
-| ------------------------ | ------------------------------------ | --- |
-| NLP Model                | SentenceTransformers (MiniLM - BERT) |
-| Similarity Metric        | Cosine Similarity                    |
-| 🔶 Domain Classifier     | Logistic Regression (Scikit-learn)   |
-| 🔶 Resume Scoring Engine | Custom ATS Scoring Logic             |
-| Baseline Model           | TF-IDF (Scikit-learn)                |
-| Backend                  | Python                               |
-| UI (ML Engine)           | Streamlit                            |
-| Landing Page             | TailwindCSS + Vercel                 |
-| Hosting                  | Streamlit Cloud + Vercel             |
-| Domain                   | Cloudflare                           |     |
+| Component             | Technology                           |
+| --------------------- | ------------------------------------ |
+| NLP Model             | SentenceTransformers (MiniLM - BERT) |
+| Similarity Metric     | Cosine Similarity                    |
+| Domain Classifier     | Logistic Regression (Scikit-learn)   |
+| Resume Scoring Engine | Custom ATS Scoring Logic             |
+| Baseline Model        | TF-IDF (Scikit-learn)                |
+| Backend               | Python                               |
+| UI (ML Engine)        | Streamlit                            |
+| Landing Page          | TailwindCSS + Vercel                 |
+| Hosting               | Streamlit Cloud + Vercel             |
+| Domain                | Cloudflare                           |
 
 ---
 
