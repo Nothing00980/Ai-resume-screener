@@ -278,22 +278,45 @@ if uploaded_file is not None:
         # FILTER JOBS BY DOMAIN
         # ---------------------------------------------
 
+        def normalize_domain(domain):
+
+            domain = domain.lower().replace(" ", "")
+
+            mapping = {
+                "datascience": "datascience",
+                "ai": "ai",
+                "machinelearning": "ai",
+                "backend": "backend",
+                "frontend": "frontend",
+                "fullstack": "fullstack",
+                "mobile": "mobile",
+                "cloud": "cloud",
+                "devops": "devops",
+                "cybersecurity": "cybersecurity",
+                "dotnet": "dotnet",
+                "java": "java",
+                "python": "python"
+            }
+
+            return mapping.get(domain, domain)
+
+
+        predicted_domain = normalize_domain(predicted_domain)
         domain_indices = [
             i for i, d in enumerate(job_domains)
-            if d.lower() == predicted_domain.lower()
+            if normalize_domain(d) == predicted_domain
         ]
 
         if len(domain_indices) == 0:
-            st.warning("No jobs found for this domain.")
-            os.remove("temp.pdf")
-            st.stop()
+            st.warning("No jobs found for predicted domain. Running global search.")
 
+            domain_indices = list(range(len(job_titles)))
         filtered_embeddings = job_embeddings[domain_indices]
 
 
         similarity = cosine_similarity(resume_embedding, filtered_embeddings)[0]
 
-        threshold = 0.60
+        threshold = 0.40
 
         applicable_indices = [
             domain_indices[i]
