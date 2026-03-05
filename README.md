@@ -13,6 +13,9 @@ AI Resume Intelligence is an end-to-end NLP system designed to semantically matc
 
 Instead of relying on keyword matching, the system leverages **BERT-based dense vector embeddings** and **cosine similarity ranking** to capture contextual meaning and improve job alignment accuracy.
 
+🔶 The system now also includes a **Domain Classification model** trained on thousands of resumes to first identify the candidate’s career domain before performing semantic job matching.  
+This significantly improves matching accuracy and reduces irrelevant role recommendations.
+
 The platform provides:
 
 - 🎯 Top-K job role matching
@@ -29,6 +32,13 @@ The platform provides:
 - Uses `SentenceTransformer (all-MiniLM-L6-v2)`
 - Generates 384-dimensional dense embeddings
 - Computes contextual similarity using cosine distance
+
+### 🔶 Domain-Aware Job Filtering
+
+- Trained a **Logistic Regression domain classifier**
+- Built using **SentenceTransformer embeddings of 10K+ resumes**
+- Predicts candidate domain before job matching
+- Reduces search space and improves recommendation precision
 
 ### 🔹 TF-IDF Baseline Comparison
 
@@ -47,6 +57,15 @@ The platform provides:
 - Extracts text from resumes
 - Supports structured and real-world resume formats
 
+### 🔶 ATS Resume Scoring
+
+- Computes a **composite ATS score (0–100)** for each job match
+- Combines:
+  - Semantic similarity score
+  - Skill coverage ratio
+  - Resume completeness signal
+- Provides a recruiter-style **resume evaluation metric**
+
 ---
 
 ## 🏗️ System Architecture
@@ -59,11 +78,17 @@ Text Cleaning
 ↓
 SentenceTransformer Embedding
 ↓
+🔶 Domain Classification
+↓
+Domain-based Job Filtering
+↓
 Cosine Similarity Ranking
 ↓
 Top-K Job Matches
 ↓
 Skill Gap Analysis
+↓
+🔶 ATS Resume Score
 
 ---
 
@@ -94,16 +119,18 @@ Structured JSON format containing:
 
 ## ⚙️ Tech Stack
 
-| Component         | Technology                           |
-| ----------------- | ------------------------------------ |
-| NLP Model         | SentenceTransformers (MiniLM - BERT) |
-| Similarity Metric | Cosine Similarity                    |
-| Baseline Model    | TF-IDF (Scikit-learn)                |
-| Backend           | Python                               |
-| UI (ML Engine)    | Streamlit                            |
-| Landing Page      | TailwindCSS + Vercel                 |
-| Hosting           | Streamlit Cloud + Vercel             |
-| Domain            | Cloudflare                           |
+| Component                | Technology                           |
+| ------------------------ | ------------------------------------ | --- |
+| NLP Model                | SentenceTransformers (MiniLM - BERT) |
+| Similarity Metric        | Cosine Similarity                    |
+| 🔶 Domain Classifier     | Logistic Regression (Scikit-learn)   |
+| 🔶 Resume Scoring Engine | Custom ATS Scoring Logic             |
+| Baseline Model           | TF-IDF (Scikit-learn)                |
+| Backend                  | Python                               |
+| UI (ML Engine)           | Streamlit                            |
+| Landing Page             | TailwindCSS + Vercel                 |
+| Hosting                  | Streamlit Cloud + Vercel             |
+| Domain                   | Cloudflare                           |     |
 
 ---
 
@@ -125,6 +152,8 @@ Resume Analysis
 - Model loading caching
 - Lightweight MiniLM transformer
 - Top-K ranking instead of full pair scoring
+- 🔶 Domain filtering to reduce similarity search space
+- 🔶 Cached transformer model loading for faster inference
 
 ---
 
@@ -164,6 +193,7 @@ ai-resume-matcher/
 
 - Modular codebase (UI separated from logic)
 - Semantic search architecture
+- 🔶 Domain classification pipeline trained on large resume dataset
 - TF-IDF baseline benchmarking
 - Production-ready deployment pipeline
 - Custom domain integration
@@ -178,8 +208,22 @@ ai-resume-matcher/
 - Fine-tuned domain-specific embedding model
 - Section-aware resume matching
 - Vector database integration (FAISS)
+- 🔶 LLM-powered career guidance (Gemini / OpenAI)
 - LLM-powered resume improvement suggestions
 - Recruiter analytics dashboard
+
+## 🧠 AI Pipeline Components
+
+The system consists of three intelligent layers:
+
+1️⃣ **Semantic Resume Encoder**  
+Uses transformer embeddings to understand resume context.
+
+2️⃣ **Domain Classification Model**  
+Predicts the candidate’s primary technical domain using a trained classifier.
+
+3️⃣ **ATS Scoring Engine**  
+Ranks job alignment using semantic similarity, skill coverage, and resume completeness.
 
 ---
 
